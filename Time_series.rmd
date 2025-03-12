@@ -1,0 +1,9 @@
+Joel Rosen & Tushan Dargan
+Ds4420 Final Project
+
+Problem:
+Using CNN's to classify different types of Skin Cancer
+
+```{r}
+
+```
