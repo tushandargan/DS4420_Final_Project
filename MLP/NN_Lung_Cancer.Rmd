@@ -1,0 +1,196 @@
+---
+title: "FFNN for Lung Cancer Prediction"
+author: "Joel Rosen"
+date: "2025-04-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(neuralnet)
+library(caret)   
+library(dplyr)  
+
+set.seed(123)
+
+data <- read.csv("Lung_Cancer_Dataset.csv", stringsAsFactors = FALSE)
+
+head(data)
+```
+```{r}
+data$LungCancer <- ifelse(data$PULMONARY_DISEASE == "YES", 1, 0)
+
+binary_cols <- setdiff(names(data), c("AGE", "ENERGY_LEVEL", "OXYGEN_SATURATION", "PULMONARY_DISEASE", "LungCancer"))
+
+data[binary_cols] <- lapply(data[binary_cols], function(x) {
+  as.numeric(as.character(x))
+})
+
+str(data)
+
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+data[, c("AGE", "ENERGY_LEVEL", "OXYGEN_SATURATION")] <- lapply(data[, c("AGE", "ENERGY_LEVEL", "OXYGEN_SATURATION")], normalize)
+
+summary(data)
+```
+```{r}
+train_index <- createDataPartition(data$LungCancer, p = 0.8, list = FALSE)
+train_data <- data[train_index, ]
+test_data  <- data[-train_index, ]
+
+```
+
+```{r hyperparameter-tuning, message=FALSE, warning=FALSE}
+#library(ggplot2)
+
+#hidden_sizes <- c(3, 5, 7, 9)
+
+#tuning_results <- data.frame(HiddenSize = numeric(), Accuracy = numeric())
+
+#for (h in hidden_sizes) {
+  #nn_model_tuned <- neuralnet(formula,
+     #                         data = train_data,
+    #                           linear.output = FALSE,
+  #                            stepmax = 1e6)
+  
+ # preds <- neuralnet::compute(nn_model_tuned, test_data[, predictor_names])
+#  predicted_prob <- preds$net.result
+  
+ # predicted_class <- ifelse(predicted_prob > 0.5, 1, 0)
+  
+#  acc <- sum(predicted_class == test_data$LungCancer) / nrow(test_data)
+  
+  #tuning_results <- rbind(tuning_results, data.frame(HiddenSize = h, Accuracy = acc))
+  #
+ # cat("Hidden neurons =", h, "; Test Accuracy =", round(acc, 3), "\n")
+#}
+```
+
+```{r}
+#ggplot(tuning_results, aes(x = as.factor(HiddenSize), y = Accuracy)) +
+  #geom_bar(stat = "identity", fill = "steelblue") +
+  #labs(title = "Hyperparameter Tuning: Hidden Layer Size",
+    #   x = "Number of Hidden Neurons",
+   #    y = "Test Accuracy") +
+  #theme_minimal()
+```
+
+```{r}
+predictor_names <- setdiff(names(train_data), c("PULMONARY_DISEASE", "LungCancer"))
+formula <- as.formula(paste("LungCancer ~", paste(predictor_names, collapse = " + ")))
+print(formula)
+
+nn_model <- neuralnet(formula,
+                      data = train_data,
+                      hidden = 5,            
+                      linear.output = FALSE, 
+                      stepmax = 1e6)         
+
+plot(nn_model)
+
+```
+
+```{r}
+predictions <- neuralnet::compute(nn_model, test_data[, predictor_names])
+predicted_probabilities <- predictions$net.result
+
+predicted_class <- ifelse(predicted_probabilities > 0.5, 1, 0)
+
+predicted_class <- ifelse(predicted_probabilities > 0.5, 1, 0)
+
+actual_class <- test_data$LungCancer
+
+accuracy <- sum(predicted_class == actual_class) / length(actual_class)
+cat("Model Accuracy:", accuracy, "\n")
+
+confusion_matrix <- table(Predicted = predicted_class, Actual = actual_class)
+print(confusion_matrix)
+```
+## Model Evaluation and Additional Analytics
+
+After building and training your neural network, we now generate predictions on the test set. We then compute a variety of evaluation metrics, including the confusion matrix (both via base R and using the `caret` package), precision, recall, F1 score, and the ROC curve with AUC.
+
+```{r predictions-advanced}
+library(caret)
+library(pROC)
+cm <- table(Predicted = predicted_class, Actual = actual_class)
+cat("Confusion Matrix (Base R):\n")
+print(cm)
+
+confusion <- confusionMatrix(factor(predicted_class), factor(actual_class))
+cat("\nDetailed Confusion Matrix Statistics:\n")
+print(confusion)
+
+sensitivity <- confusion$byClass["Sensitivity"]
+specificity <- confusion$byClass["Specificity"]
+precision <- confusion$byClass["Pos Pred Value"]
+f1_score <- 2 * (precision * sensitivity) / (precision + sensitivity)
+cat("\nSensitivity:", round(sensitivity, 3))
+cat("\nSpecificity:", round(specificity, 3))
+cat("\nPrecision:", round(precision, 3))
+cat("\nF1 Score:", round(f1_score, 3), "\n")
+
+roc_obj <- roc(actual_class, as.vector(predicted_probabilities))
+auc_value <- auc(roc_obj)
+cat("\nArea Under the ROC Curve (AUC):", round(auc_value, 3), "\n")
+
+plot(roc_obj, main = "ROC Curve for Lung Cancer Prediction Neural Network Model")
+```
+
+```{r}
+library(NeuralNetTools)
+
+olden_data <- olden(nn_model, bar_plot = FALSE)
+olden_sorted <- olden_data %>% arrange(desc(importance))
+
+print(olden_sorted)
+```
+
+
+```{r}
+cm_df <- as.data.frame(cm)
+names(cm_df) <- c("Predicted", "Actual", "Count")
+
+cm_df$Actual <- factor(cm_df$Actual, levels = c(0, 1),
+                       labels = c("No Pulmonary Disease", "Has Pulmonary Disease"))
+cm_df$Predicted <- factor(cm_df$Predicted, levels = c(0, 1),
+                          labels = c("No Pulmonary Disease", "Has Pulmonary Disease"))
+
+ggplot(cm_df, aes(x = Actual, y = Count, fill = Predicted)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Lung Cancer Prediction Confusion Matrix Counts",
+       x = "Actual Condition",
+       y = "Count") +
+  theme_minimal()
+
+```
+```{r}
+library(dplyr)
+calibration_df <- data.frame(
+  Probability = as.vector(predicted_probabilities),
+  Actual = actual_class
+)
+
+calibration_summary <- calibration_df %>%
+  mutate(prob_bin = cut(Probability, breaks = seq(0, 1, by = 0.1), include.lowest = TRUE)) %>%
+  group_by(prob_bin) %>%
+  summarize(avg_prob = mean(Probability),
+            actual_rate = mean(Actual),
+            count = n())
+
+ggplot(calibration_summary, aes(x = avg_prob, y = actual_rate)) +
+  geom_point(size = 3) +
+  geom_line() +
+  labs(title = "Calibration Plot",
+       x = "Average Predicted Probability",
+       y = "Actual Proportion of Lung Cancer Cases") +
+  theme_minimal()
+```
+
+
