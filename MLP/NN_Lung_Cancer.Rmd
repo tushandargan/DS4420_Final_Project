@@ -46,41 +46,6 @@ test_data  <- data[-train_index, ]
 
 ```
 
-```{r hyperparameter-tuning, message=FALSE, warning=FALSE}
-#library(ggplot2)
-
-#hidden_sizes <- c(3, 5, 7, 9)
-
-#tuning_results <- data.frame(HiddenSize = numeric(), Accuracy = numeric())
-
-#for (h in hidden_sizes) {
-  #nn_model_tuned <- neuralnet(formula,
-     #                         data = train_data,
-    #                           linear.output = FALSE,
-  #                            stepmax = 1e6)
-  
- # preds <- neuralnet::compute(nn_model_tuned, test_data[, predictor_names])
-#  predicted_prob <- preds$net.result
-  
- # predicted_class <- ifelse(predicted_prob > 0.5, 1, 0)
-  
-#  acc <- sum(predicted_class == test_data$LungCancer) / nrow(test_data)
-  
-  #tuning_results <- rbind(tuning_results, data.frame(HiddenSize = h, Accuracy = acc))
-  #
- # cat("Hidden neurons =", h, "; Test Accuracy =", round(acc, 3), "\n")
-#}
-```
-
-```{r}
-#ggplot(tuning_results, aes(x = as.factor(HiddenSize), y = Accuracy)) +
-  #geom_bar(stat = "identity", fill = "steelblue") +
-  #labs(title = "Hyperparameter Tuning: Hidden Layer Size",
-    #   x = "Number of Hidden Neurons",
-   #    y = "Test Accuracy") +
-  #theme_minimal()
-```
-
 ```{r}
 predictor_names <- setdiff(names(train_data), c("PULMONARY_DISEASE", "LungCancer"))
 formula <- as.formula(paste("LungCancer ~", paste(predictor_names, collapse = " + ")))
