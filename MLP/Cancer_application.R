@@ -38,22 +38,21 @@ predictions <- neuralnet::compute(nn_model, test_data[, predictor_names])
 predicted_probabilities <- as.vector(predictions$net.result)
 
 
-ui <- navbarPage("FFNN for Lung Cancer Prediction App",
+ui <- navbarPage("Cancer Prediction App",
                  
-                 # Home / Landing Page
                  tabPanel("Home",
                           fluidPage(
-                            titlePanel("Lung Cancer Prediction Project"),
+                            titlePanel("Cancer Prediction Project"),
                             sidebarLayout(
                               sidebarPanel(
                                 h3("Project Description"),
-                                p("This project uses a multi layer perceptron to predict lung cancer outcomes based on various health metrics. 
-             The data is preprocessed and normalized; then, the model is trained and evaluated using different performance metrics.
-             Use the interactive page to explore the impact of choosing different classification thresholds on the confusion matrix.")
+                                p("In this project we created a CNN to detect which type of skin cancer is in an image as well as an MLP to predict lung cancer outcomes based on various health metrics. 
+             In the MLP model, the data is preprocessed and normalized; then, the model is trained and evaluated using different performance metrics.
+             Use the interactive page to explore the the MLP model for lung cancer prediction and how the impact of choosing different classification thresholds on the confusion matrix.")
                               ),
                               mainPanel(
                                 h4("Overview"),
-                                p("Navigate to the 'Visualization' tab to interact with the model output. 
+                                p("Navigate to the 'Visualization' tab to interact with the MLP model output. 
               You can adjust the threshold for converting predicted probabilities into class labels and see how it affects the confusion matrix counts.")
                               )
                             )

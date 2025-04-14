@@ -1,0 +1,134 @@
+---
+title: "MLP for Lung Cancer Prediction from scratch"
+author: "Joel Rosen"
+date: "2025-04-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(neuralnet)
+library(caret)   
+library(dplyr)  
+
+set.seed(123)
+
+data <- read.csv("Lung_Cancer_Dataset.csv", stringsAsFactors = FALSE)
+
+head(data)
+```
+```{r}
+data$LungCancer <- ifelse(data$PULMONARY_DISEASE == "YES", 1, 0)
+
+binary_cols <- setdiff(names(data), c("AGE", "ENERGY_LEVEL", "OXYGEN_SATURATION", "PULMONARY_DISEASE"))
+
+data[binary_cols] <- lapply(data[binary_cols], function(x) {
+  as.numeric(as.character(x))
+})
+
+str(data)
+
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+data[, c("AGE", "ENERGY_LEVEL", "OXYGEN_SATURATION")] <- lapply(data[, c("AGE", "ENERGY_LEVEL", "OXYGEN_SATURATION")], normalize)
+
+summary(data)
+```
+
+```{r}
+train_index <- createDataPartition(data$LungCancer, p = 0.8, list = FALSE)
+train_data <- data[train_index, ]
+test_data  <- data[-train_index, ]
+
+predictor_names <- setdiff(names(train_data), c("PULMONARY_DISEASE", "LungCancer"))
+```
+
+```{r}
+train_X <- as.matrix(train_data[, predictor_names])
+train_Y <- as.matrix(train_data$LungCancer)
+n <- nrow(train_X)          
+input_dim <- ncol(train_X)  
+hidden_dim <- 5             
+output_dim <- 1         
+```
+
+```{r}
+set.seed(123)
+W1 <- matrix(runif(input_dim * hidden_dim, min = -0.5, max = 0.5), nrow = input_dim, ncol = hidden_dim)
+b1 <- matrix(0, nrow = 1, ncol = hidden_dim)
+W2 <- matrix(runif(hidden_dim * output_dim, min = -0.5, max = 0.5), nrow = hidden_dim, ncol = output_dim)
+b2 <- matrix(0, nrow = 1, ncol = output_dim)
+```
+
+```{r}
+sigmoid <- function(x) {
+  1 / (1 + exp(-x))
+}
+```
+
+```{r}
+learning_rate <- 0.1    
+num_epochs <- 1000      
+
+
+for (epoch in 1:num_epochs) {
+  Z1 <- train_X %*% W1 + matrix(rep(b1, n), nrow = n, byrow = TRUE)
+  A1 <- sigmoid(Z1) 
+  
+  Z2 <- A1 %*% W2 + matrix(rep(b2, n), nrow = n, byrow = TRUE)
+  A2 <- sigmoid(Z2)
+  
+  
+  # Binary cross-entropy loss
+  cost <- -mean(train_Y * log(A2) + (1 - train_Y) * log(1 - A2))
+  
+  # backprop
+ 
+  dZ2 <- A2 - train_Y         # n x 1
+  
+  # Gradients for weights and bias from hidden to output layer
+  dW2 <- t(A1) %*% dZ2 / n  
+  db2 <- colSums(dZ2) / n   
+  
+  dA1 <- dZ2 %*% t(W2)       
+  dZ1 <- dA1 * A1 * (1 - A1) 
+  
+  
+  dW1 <- t(train_X) %*% dZ1 / n  
+  db1 <- colSums(dZ1) / n        
+  
+  W1 <- W1 - learning_rate * dW1
+  b1 <- b1 - learning_rate * db1
+  W2 <- W2 - learning_rate * dW2
+  b2 <- b2 - learning_rate * db2
+}
+```
+
+```{r}
+test_X <- as.matrix(test_data[, predictor_names])
+n_test <- nrow(test_X)
+
+Z1_test <- test_X %*% W1 + matrix(rep(b1, n_test), nrow = n_test, byrow = TRUE)
+A1_test <- sigmoid(Z1_test)
+Z2_test <- A1_test %*% W2 + matrix(rep(b2, n_test), nrow = n_test, byrow = TRUE)
+A2_test <- sigmoid(Z2_test)
+
+predicted_class <- ifelse(A2_test > 0.5, 1, 0)
+actual_class <- test_data$LungCancer
+
+accuracy <- sum(predicted_class == actual_class) / length(actual_class)
+cat("MLP from scratch - Model Accuracy:", accuracy, "\n")
+```
+
+```{r}
+confusion_matrix <- table(Predicted = predicted_class, Actual = actual_class)
+print(confusion_matrix)
+```
+
+
+

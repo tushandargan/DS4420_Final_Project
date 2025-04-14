@@ -1,5 +1,5 @@
 ---
-title: "FFNN for Lung Cancer Prediction"
+title: "MLP for Lung Cancer Prediction with prebuilt methods"
 author: "Joel Rosen"
 date: "2025-04-11"
 output: html_document
