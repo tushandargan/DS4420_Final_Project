@@ -130,5 +130,9 @@ confusion_matrix <- table(Predicted = predicted_class, Actual = actual_class)
 print(confusion_matrix)
 ```
 
-
+```{r}
+roc_obj <- roc(actual_class, as.vector(A2_test))
+auc_value <- auc(roc_obj)
+cat("MLP from scratch - Model AUC:", auc_value, "\n")
+```
 
